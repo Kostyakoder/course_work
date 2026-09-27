@@ -1,3 +1,4 @@
+import sys
 import time
 
 
@@ -10,6 +11,7 @@ class DataLayer:
         self.client_id = 1
         self.task_id = 1
         self.response_id = 1
+
     def create_client(self, ip: str,
                       locale: str,
                       platform: str):
@@ -22,19 +24,21 @@ class DataLayer:
         }
         self.clients.append(client)
         self.client_id += 1
-        return "Запись нового клиента создана"
+        return client
 
-    def delete_client(self, client_id: int):
-        if client_id <= len(self.clients):
-            self.clients = self.clients[:client_id] + self.clients[client_id + 1:]
-            return f"Запись с client_id = {client_id} удалена"
-        return "Такого client_id не существует!"
+    def delete_client(self, new_client_id: int):
+        if new_client_id in [client['id'] for client in self.clients]:
+            self.clients = [client for client in self.clients if client["id"] != new_client_id]
+            return new_client_id
+        return "Такого id у клиентов не существует!"
 
     def get_all_clients(self):
         return self.clients
 
-    def get_client_by_id(self, client_id: int):
-        return self.clients[client_id]
+    def get_client_by_id(self, new_client_id: int):
+        if new_client_id in [client['id'] for client in self.clients]:
+            return next(client for client in self.clients if client['id'] == new_client_id)
+        return "Такого id у клиентов не существует!"
 
 
     def create_task(self, payload: str,
@@ -50,19 +54,21 @@ class DataLayer:
         }
         self.tasks.append(task)
         self.task_id += 1
-        return "Запись новой задачи создана"
+        return task
 
-    def delete_task(self, task_id: int):
-        if task_id <= len(self.tasks):
-            self.tasks = self.tasks[:task_id] + self.clients[task_id + 1:]
-            return f"Запись с task_id = {task_id} удалена"
+    def delete_task(self, new_task_id: int):
+        if new_task_id in [task['id'] for task in self.tasks]:
+            self.tasks = [task for task in self.tasks if task["id"] != new_task_id]
+            return new_task_id
         return "Такого task_id не существует!"
 
     def get_all_tasks(self):
         return self.tasks
 
-    def get_task_by_id(self, task_id: int):
-        return self.tasks[task_id]
+    def get_task_by_id(self, new_task_id: int):
+        if new_task_id in [task['id'] for task in self.tasks]:
+            return next(task for task in self.tasks if task['id'] == new_task_id)
+        return "Такого id у задач не существует!"
 
 
     def create_response(self, output: str,
@@ -81,24 +87,25 @@ class DataLayer:
         }
         self.responses.append(response)
         self.response_id += 1
-        return "Запись нового ответа создана"
+        return response
 
-    def delete_response(self, response_id: int):
-        if response_id <= len(self.responses):
-            self.responses = self.responses[:response_id] + self.responses[response_id + 1:]
-            return f"Запись с response_id = {response_id} удалена"
+    def delete_response(self, new_response_id: int):
+        if new_response_id in [response['id'] for response in self.responses]:
+            self.responses = [response for response in self.responses if response["id"] != new_response_id]
+            return new_response_id
         return "Такого response_id не существует!"
 
     def get_all_responses(self):
         return self.responses
 
-    def get_response_by_id(self, response_id: int):
-        return self.responses[response_id]
+    def get_response_by_id(self, new_response_id: int):
+        if new_response_id in [response['id'] for response in self.responses]:
+            return next(response for response in self.responses if response['id'] == new_response_id)
+        return "Такого id у ответов не существует!"
 
     def query_right_join(self):
         filtered_tasks = [t for t in self.tasks if t["datetime"] > (int(time.time()) - (8 * 60))] # > (8 * 60)
         result = []
-        result_tasks = []
         result_clients = []
         for t in filtered_tasks:
             for client in self.clients:
@@ -111,20 +118,163 @@ class DataLayer:
         result.append(result_tasks)
         return result
 
-dataLayer = DataLayer()
 
-dataLayer.create_client(ip="192.168.127.12", locale = "Russia", platform= "Mess")
-dataLayer.create_client(ip="192.168.111.00", locale = "Tajikistan", platform= "Mess")
-dataLayer.create_client(ip="192.168.100.01", locale = "USA", platform= "Mess")
+class Repl:
+    def __init__(self):
+        self.dataLayer = DataLayer()
+        self.commands = {
+            'add_client': self.add_client_repl,
+            'del_client': self.del_client_repl,
+            'get_all_clients': self.get_all_clients_repl,
+            'get_client_by_id': self.get_client_by_id_repl,
+            'add_task': self.add_task_repl,
+            'del_task': self.del_task_repl,
+            'get_all_tasks': self.get_all_tasks_repl,
+            'get_task_by_id': self.get_task_by_id_repl,
+            'add_response': self.add_response_repl,
+            'del_response': self.del_response_repl,
+            'get_all_responses': self.get_all_responses_repl,
+            'get_response_by_id': self.get_response_by_id_repl,
+            'query_right_join': self.query_right_join_repl,
+            'test_data': self.test_data,
+            'exit': self.exit
+        }
 
-dataLayer.create_task(payload = "server", client=1, tags="important", state="work")
-dataLayer.create_task(payload = "server", client=2, tags="sensitive", state="success")
-dataLayer.create_task(payload = "server", client=5, tags="disturb", state="unsuccess")
+    def add_client_repl(self, args):
+        if len(args) != 3:
+            raise ValueError("Неверное количество атрибутов для создания записи клиента")
 
-dataLayer.create_response(output = "Session success", state = "finished", failure = "No", task = 1, cache_hit = 0, duration = 0)
+        ip, locale, platform = args[0], args[1], args[2]
+        client = self.dataLayer.create_client(ip, locale, platform)
+        return f'Клиент создан: {client}'
 
-# dataLayer.clients = [{'id': 1, 'datetime': 1790522162, 'ip': '192.168.127.12', 'locale': 'Russia', 'platform': 'Mess'}, {'id': 2, 'datetime': 1790522162, 'ip': '192.168.111.00', 'locale': 'Tajikistan', 'platform': 'Mess'}, {'id': 3, 'datetime': 1790522162, 'ip': '192.168.100.01', 'locale': 'USA', 'platform': 'Mess'}]
-# dataLayer.tasks = [{'id': 1, 'datetime': 1790522162, 'payload': 'server', 'client': 1, 'tags': 'important', 'state': 'work'}, {'id': 2, 'datetime': 1790522162, 'payload': 'server', 'client': 2, 'tags': 'sensitive', 'state': 'success'}, {'id': 3, 'datetime': 1790522162, 'payload': 'server', 'client': 5, 'tags': 'disturb', 'state': 'unsuccess'}]
-# dataLayer.responses = [{'id': 1, 'datetime': 1790522162, 'output': 'Session success', 'state': 'finished', 'failure': 'No', 'task': 1, 'cache_hit': 0, 'duration': 0}]
+    def del_client_repl(self, args):
+        if len(args) != 1:
+            raise ValueError("Для удаления клиента нужно передать только id клиента")
 
-print(dataLayer.query_right_join())
+        id = int(args[0])
+        client = self.dataLayer.delete_client(id)
+        return f"Удален клиент с id: {client}"
+
+    def get_all_clients_repl(self, args):
+        if len(args) != 0:
+            raise ValueError("Команда не принимает аргументов")
+
+        return self.dataLayer.get_all_clients()
+
+    def get_client_by_id_repl(self, args):
+        if len(args) != 1:
+            raise ValueError("Для получения записи клиента нужно указать только его id")
+        id = int(args[0])
+        return self.dataLayer.get_client_by_id(id)
+
+
+    def add_task_repl(self, args):
+        if len(args) != 4:
+            raise ValueError("Неверное количество атрибутов для создания записи задачи")
+
+        payload, client, tags, state = args[0], args[1], args[2], args[3]
+        task = self.dataLayer.create_task(payload, client, tags, state)
+        return f'Задача создана: {task}'
+
+    def del_task_repl(self, args):
+        if len(args) != 1:
+            raise ValueError("Для удаления задачи нужно передать только id задачи")
+
+        id = int(args[0])
+        task = self.dataLayer.delete_task(id)
+        return f"Удалена задача с id: {task}"
+
+    def get_all_tasks_repl(self, args):
+        if len(args) != 0:
+            raise ValueError("Команда не принимает аргументов")
+
+        return self.dataLayer.get_all_tasks()
+
+    def get_task_by_id_repl(self, args):
+        if len(args) != 1:
+            raise ValueError("Для получения записи задачи нужно указать только её id")
+
+        id = int(args[0])
+        return self.dataLayer.get_task_by_id(id)
+
+
+    def add_response_repl(self, args):
+        if len(args) != 6:
+            raise ValueError("Неверное количество атрибутов для создания записи ответа")
+
+        output, state, failure, task, cache_hit, duration = args
+        response = self.dataLayer.create_response(output, state, failure, task, cache_hit, duration)
+        return f'Ответ создан: {response}'
+
+    def del_response_repl(self, args):
+        if len(args) != 1:
+            raise ValueError("Для удаления ответа нужно передать только id ответа")
+
+        id = int(args[0])
+        response = self.dataLayer.delete_response(id)
+        return f"Удален ответ с id: {response}"
+
+    def get_all_responses_repl(self, args):
+        if len(args) != 0:
+            raise ValueError("Команда не принимает аргументов")
+
+        return self.dataLayer.get_all_responses()
+
+    def get_response_by_id_repl(self, args):
+        if len(args) != 1:
+            raise ValueError("Для получения записи ответа нужно указать только его id")
+
+        id = int(args[0])
+        return self.dataLayer.get_response_by_id(id)
+
+    def query_right_join_repl(self, args):
+        if len(args) != 0:
+            raise ValueError("Команда не принимает аргументов")
+
+        return self.dataLayer.query_right_join()
+
+    def exit(self, args):
+        if len(args) != 0:
+            raise ValueError("Команда не принимает аргументов")
+
+        sys.exit(0)
+
+    def test_data(self, args):
+        if len(args) != 0:
+            raise ValueError("Команда не принимает аргументов")
+
+        self.dataLayer.create_client(ip="192.168.127.12", locale = "Russia", platform= "Mess")
+        self.dataLayer.create_client(ip="192.168.111.00", locale = "Tajikistan", platform= "Mess")
+        self.dataLayer.create_client(ip="192.168.100.01", locale = "USA", platform= "Mess")
+
+        self.dataLayer.create_task(payload = "server", client=1, tags="important", state="work")
+        self.dataLayer.create_task(payload = "server", client=2, tags="sensitive", state="success")
+        self.dataLayer.create_task(payload = "server", client=5, tags="disturb", state="unsuccess")
+
+        self.dataLayer.create_response(output = "Session success", state = "finished", failure = "No", task = 1, cache_hit = 0, duration = 0)
+
+        return "Клиенты, задачи и ответы заполнены тестовыми данными"
+    def run(self):
+        while True:
+            try:
+                user_input = input("db> ").strip()
+                if not user_input:
+                    continue
+
+                parts = user_input.split()
+                cmd = parts[0].lower()
+                args = parts[1:]
+
+                if cmd in self.commands:
+                    print(self.commands[cmd](args))
+                else:
+                    print("Такой команды нет!")
+            except Exception as e:
+                print(e)
+
+
+
+if __name__ == '__main__':
+    repl = Repl()
+    repl.run()
