@@ -1,6 +1,15 @@
+import logging
 import sys
 import time
+import socket
 
+
+logging.basicConfig(
+    filename='journal.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(message)s',
+    encoding = 'utf-8'
+)
 
 class DataLayer:
     def __init__(self):
@@ -312,6 +321,66 @@ class Repl:
                     print("Такой команды нет!")
             except Exception as e:
                 print(e)
+
+class RPCServer:
+    def __init__(self, host='127.0.0.1', port=8080):
+        self.data = DataLayer()
+        self.host = host
+        self.port = port
+        self.ops = {
+            1: self.data.create_client,
+            2: self.data.delete_client,
+            3: self.data.get_all_clients,
+            4: self.data.get_client_by_id,
+            5: self.data.create_task,
+            6: self.data.delete_task,
+            7: self.data.get_all_tasks,
+            8: self.data.get_task_by_id,
+            9: self.data.create_response,
+            10: self.data.delete_response,
+            11: self.data.get_all_responses,
+            12: self.data.get_response_by_id,
+            13: self.data.query_right_join,
+        }
+
+        def recv_exact(self, sock, n):
+            data = b''
+            while len(data) < n:
+                chuck = sock.recv(n - len(data))
+                if not chuck:
+                    return None
+                data += chuck
+            return data
+
+        def start(self):
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.bind((self.host, self.port))
+            s.listen()
+            while True:
+                conn, addr = s.accept()
+                self.handle(conn)
+
+        def handle(self, conn):
+            opcode_b = self.recv_exact(conn, 2)
+            if not opcode_b:
+                break
+            opcode = int.from_bytes(opcode_b, "little")
+
+            size_b = self.recv_exact(conn, 4)
+            size = int.from_bytes(size_b, "little")
+
+            body_b = self.recv_exact(conn, size)
+            args = ...
+            try:
+                result = self.ops[opcode](*args)
+                resp_xml = ...
+                status = "OK"
+            except Exception as e:
+                resp_xml = ...
+                status = "ERROR"
+
+            logging.info(f'opcode={opcode} status={status} response={resp_xml}')
+            resp_b = resp_xml.encode()
 
 
 if __name__ == "__main__":
