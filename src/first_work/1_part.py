@@ -1,15 +1,6 @@
-import logging
 import sys
 import time
-import socket
 
-
-logging.basicConfig(
-    filename='journal.log',
-    level=logging.INFO,
-    format='%(asctime)s - %(message)s',
-    encoding = 'utf-8'
-)
 
 class DataLayer:
     def __init__(self):
@@ -52,7 +43,7 @@ class DataLayer:
             "id": self.task_id,
             "datetime": int(time.time()),
             "payload": payload,
-            "client": client,
+            "client": int(client),
             "tags": tags,
             "state": state,
         }
@@ -123,7 +114,7 @@ class DataLayer:
         curr_time = int(time.time())
         filtered_tasks = [
             t for t in self.tasks if t["datetime"] > (curr_time - (8 * 60))
-        ]  # > (8 * 60)
+        ]
         result = []
         result_clients = []
         for t in filtered_tasks:
@@ -142,25 +133,27 @@ class Repl:
     def __init__(self):
         self.dataLayer = DataLayer()
         self.commands = {
-            "add_client": self.add_client_repl,
-            "del_client": self.del_client_repl,
+            "create_client": self.create_client_repl,
+            "delete_client": self.delete_client_repl,
             "get_all_clients": self.get_all_clients_repl,
             "get_client_by_id": self.get_client_by_id_repl,
-            "add_task": self.add_task_repl,
-            "del_task": self.del_task_repl,
+            "create_task": self.create_task_repl,
+            "delete_task": self.delete_task_repl,
             "get_all_tasks": self.get_all_tasks_repl,
             "get_task_by_id": self.get_task_by_id_repl,
-            "add_response": self.add_response_repl,
-            "del_response": self.del_response_repl,
+            "create_response": self.create_response_repl,
+            "delete_response": self.delete_response_repl,
             "get_all_responses": self.get_all_responses_repl,
             "get_response_by_id": self.get_response_by_id_repl,
             "query_right_join": self.query_right_join_repl,
             "test_data": self.test_data,
+            "help": self.help_repl,
             "exit": self.exit,
         }
 
-    def add_client_repl(self, args):
-        if len(args) != 3:
+    def create_client_repl(self, args):
+        n = 3
+        if len(args) != n:
             raise ValueError(
                 "Неверное количество атрибутов для создания записи клиента"
             )
@@ -169,7 +162,7 @@ class Repl:
         client = self.dataLayer.create_client(ip, locale, platform)
         return f"Клиент создан: {client}"
 
-    def del_client_repl(self, args):
+    def delete_client_repl(self, args):
         if len(args) != 1:
             m = "Для удаления клиента нужно передать только id клиента"
             raise ValueError(m)
@@ -191,8 +184,9 @@ class Repl:
         id = int(args[0])
         return self.dataLayer.get_client_by_id(id)
 
-    def add_task_repl(self, args):
-        if len(args) != 4:
+    def create_task_repl(self, args):
+        n = 4
+        if len(args) != n:
             m = "Неверное количество атрибутов для создания записи задачи"
             raise ValueError(m)
 
@@ -200,7 +194,7 @@ class Repl:
         task = self.dataLayer.create_task(payload, client, tags, state)
         return f"Задача создана: {task}"
 
-    def del_task_repl(self, args):
+    def delete_task_repl(self, args):
         if len(args) != 1:
             m = "Для удаления задачи нужно передать только id задачи"
             raise ValueError(m)
@@ -223,8 +217,9 @@ class Repl:
         id = int(args[0])
         return self.dataLayer.get_task_by_id(id)
 
-    def add_response_repl(self, args):
-        if len(args) != 6:
+    def create_response_repl(self, args):
+        n = 6
+        if len(args) != n:
             m = "Неверное количество атрибутов для создания записи ответа"
             raise ValueError(m)
 
@@ -234,7 +229,7 @@ class Repl:
         )
         return f"Ответ создан: {response}"
 
-    def del_response_repl(self, args):
+    def delete_response_repl(self, args):
         if len(args) != 1:
             m = "Для удаления ответа нужно передать только id ответа"
             raise ValueError(m)
@@ -268,6 +263,48 @@ class Repl:
             raise ValueError("Команда не принимает аргументов")
 
         sys.exit(0)
+
+    def help_repl(self, args):
+        if len(args) != 0:
+            raise ValueError("Команда не принимает аргументов")
+
+        return (
+            "Пиши str-значения без кавычек !!!\n"
+            "Доступные команды:\n"
+            "  create_client ip:str locale:str platform:str\n"
+            "      Создаёт нового клиента.\n"
+            "  delete_client id:int\n"
+            "      Удаляет клиента по id.\n"
+            "  get_all_clients\n"
+            "      Возвращает список всех клиентов.\n"
+            "  get_client_by_id id:int\n"
+            "      Возвращает клиента по id.\n"
+            "  create_task payload:str client:int tags:str state:str\n"
+            "      Создаёт новую задачу.\n"
+            "  delete_task id:int\n"
+            "      Удаляет задачу по id.\n"
+            "  get_all_tasks\n"
+            "      Возвращает список всех задач.\n"
+            "  get_task_by_id id:int\n"
+            "      Возвращает задачу по id.\n"
+            "  create_response output:str state:str failure:str "
+            "           task:int cache_hit:int duration:int\n"
+            "      Создаёт новый ответ.\n"
+            "  delete_response id:int\n"
+            "      Удаляет ответ по id.\n"
+            "  get_all_responses\n"
+            "      Возвращает список всех ответов.\n"
+            "  get_response_by_id id:int\n"
+            "      Возвращает ответ по id.\n"
+            "  query_right_join\n"
+            "      RIGHT JOIN задач и клиентов за последние 8 минут.\n"
+            "  test_data\n"
+            "      Заполняет хранилище тестовыми данными.\n"
+            "  help\n"
+            "      Показывает эту памятку.\n"
+            "  exit\n"
+            "      Завершает работу программы."
+        )
 
     def test_data(self, args):
         if len(args) != 0:
@@ -321,66 +358,6 @@ class Repl:
                     print("Такой команды нет!")
             except Exception as e:
                 print(e)
-
-class RPCServer:
-    def __init__(self, host='127.0.0.1', port=8080):
-        self.data = DataLayer()
-        self.host = host
-        self.port = port
-        self.ops = {
-            1: self.data.create_client,
-            2: self.data.delete_client,
-            3: self.data.get_all_clients,
-            4: self.data.get_client_by_id,
-            5: self.data.create_task,
-            6: self.data.delete_task,
-            7: self.data.get_all_tasks,
-            8: self.data.get_task_by_id,
-            9: self.data.create_response,
-            10: self.data.delete_response,
-            11: self.data.get_all_responses,
-            12: self.data.get_response_by_id,
-            13: self.data.query_right_join,
-        }
-
-        def recv_exact(self, sock, n):
-            data = b''
-            while len(data) < n:
-                chuck = sock.recv(n - len(data))
-                if not chuck:
-                    return None
-                data += chuck
-            return data
-
-        def start(self):
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.bind((self.host, self.port))
-            s.listen()
-            while True:
-                conn, addr = s.accept()
-                self.handle(conn)
-
-        def handle(self, conn):
-            opcode_b = self.recv_exact(conn, 2)
-            if not opcode_b:
-                break
-            opcode = int.from_bytes(opcode_b, "little")
-
-            size_b = self.recv_exact(conn, 4)
-            size = int.from_bytes(size_b, "little")
-
-            body_b = self.recv_exact(conn, size)
-            args = ...
-            try:
-                result = self.ops[opcode](*args)
-                resp_xml = ...
-                status = "OK"
-            except Exception as e:
-                resp_xml = ...
-                status = "ERROR"
-
-            logging.info(f'opcode={opcode} status={status} response={resp_xml}')
-            resp_b = resp_xml.encode()
 
 
 if __name__ == "__main__":
