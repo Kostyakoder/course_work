@@ -1,5 +1,7 @@
 import sys
 import time
+import socket
+import xml.etree.ElementTree as ET
 
 
 class DataLayer:
@@ -344,7 +346,7 @@ class Repl:
     def run(self):
         while True:
             try:
-                user_input = input("db> ").strip()
+                user_input = input("db_repl> ").strip()
                 if not user_input:
                     continue
 
@@ -360,6 +362,241 @@ class Repl:
                 print(e)
 
 
+class RPCBase:
+    def __init__(self, host="127.0.0.1", port=8080):
+        self.host = host
+        self.port = port
+
+    def serialize(self, obj, tag="data"):
+        root = ET.Element(tag)
+
+        def build(elem, obj):
+            if isinstance(obj, dict):
+                for k, v in obj.items():
+                    child = ET.SubElement(elem, str(k))
+                    build(child, v)
+            elif isinstance(obj, list):
+                for item in obj:
+                    child = ET.SubElement(elem, "item")
+                    build(child, item)
+            else:
+                elem.text = str(obj)
+
+        build(root, obj)
+        return ET.tostring(root, encoding="unicode")
+
+    def deserialize(self, xml_str):
+        root = ET.fromstring(xml_str)
+
+        def parse(elem):
+            if len(elem) == 0:
+                text = (elem.text or "").strip()
+                try:
+                    return int(text)
+                except ValueError:
+                    return text
+            if all(c.tag == "item" for c in elem):
+                return [parse(c) for c in elem]
+            return {c.tag: parse(c) for c in elem}
+
+        return parse(root)
+
+    def recv_bytes(self, sock, n):
+        data = b""
+        while len(data) < n:
+            chunk = sock.recv(n - len(data))
+            if not chunk:
+                raise ConnectionError
+            data += chunk
+        return data
+
+    def recv_request(self, sock):
+        opcode = int.from_bytes(self.recv_bytes(sock, 2), "little")
+        size = int.from_bytes(self.recv_bytes(sock, 4), "little")
+        body = self.recv_bytes(sock, size).decode("utf-8")
+        return opcode, self.deserialize(body)
+
+    def recv_response(self, sock):
+        opcode = int.from_bytes(self.recv_bytes(sock, 2), "little")
+        size = int.from_bytes(self.recv_bytes(sock, 5), "little")
+        body = self.recv_bytes(sock, size).decode("utf-8")
+        return opcode, self.deserialize(body)
+
+    def send_request(self, sock, opcode, req):
+        body = self.serialize(req, "args").encode("utf-8")
+        sock.sendall(opcode.to_bytes(2, "little"))
+        sock.sendall(len(body).to_bytes(4, "little"))
+        sock.sendall(body)
+
+    def send_response(self, sock, opcode, result):
+        body = self.serialize(result, "response").encode("utf-8")
+        sock.sendall(opcode.to_bytes(2, "little"))
+        sock.sendall(len(body).to_bytes(5, "little"))
+        sock.sendall(body)
+
+
+class RPCServer(RPCBase):
+    def __init__(self, host="127.0.0.1", port=5060):
+        super().__init__(host, port)
+        self.repl = Repl()
+        self.ops = {
+            1: self.repl.create_client_repl,
+            2: self.repl.delete_client_repl,
+            3: self.repl.get_all_clients_repl,
+            4: self.repl.get_client_by_id_repl,
+            5: self.repl.create_task_repl,
+            6: self.repl.delete_task_repl,
+            7: self.repl.get_all_tasks_repl,
+            8: self.repl.get_task_by_id_repl,
+            9: self.repl.create_response_repl,
+            10: self.repl.delete_response_repl,
+            11: self.repl.get_all_responses_repl,
+            12: self.repl.get_response_by_id_repl,
+            13: self.repl.query_right_join_repl,
+            14: self.repl.test_data,
+            15: self.repl.help_repl,
+        }
+
+    def start(self):
+        s = socket.socket()
+        s.bind((self.host, self.port))
+        s.listen(1)
+        print(f"RPC server on {self.host}:{self.port}")
+        while True:
+            conn, addr = s.accept()
+            print(f"Client connected: {addr}")
+            self.handle(conn)
+
+    def handle(self, conn):
+        while True:
+            try:
+                opcode, args = self.recv_request(conn)
+            except ConnectionError:
+                break
+
+            if not isinstance(args, list):
+                args = [args] if args else []
+
+            print(f"[server] opcode={opcode} args={args}")
+
+            try:
+                result = self.ops[opcode](*args)
+                status = "OK"
+            except Exception as e:
+                result = str(e)
+                status = "ERROR"
+
+            print(f"[server] result={result} status={status}")
+            # logging.info(...)
+            self.send_response(conn, opcode, result)
+        conn.close()
+
+
+class RPCClient(RPCBase):
+    OPS = {
+        "create_client": 1,
+        "delete_client": 2,
+        "get_all_clients": 3,
+        "get_client_by_id": 4,
+        "create_task": 5,
+        "delete_task": 6,
+        "get_all_tasks": 7,
+        "get_task_by_id": 8,
+        "create_response": 9,
+        "delete_response": 10,
+        "get_all_responses": 11,
+        "get_response_by_id": 12,
+        "query_right_join": 13,
+        "test_data": 14,
+        "help": 15,
+    }
+
+    def __init__(self, host="127.0.0.1", port=5060):
+        super().__init__(host, port)
+        self.sock = socket.socket()
+        self.sock.connect((self.host, self.port))
+
+    def _call(self, name, *args):
+        opcode = self.OPS[name]
+        self.send_request(self.sock, opcode, list(args))
+        _, result = self.recv_response(self.sock)
+        return result
+
+    def create_client(self, args):
+        return self._call("create_client", args)
+
+    def delete_client(self, args):
+        return self._call("delete_client", args)
+
+    def get_all_clients(self, args):
+        return self._call("get_all_clients", args)
+
+    def get_client_by_id(self, args):
+        return self._call("get_client_by_id", args)
+
+    def create_task(self, args):
+        return self._call("create_task", args)
+
+    def delete_task(self, args):
+        return self._call("delete_task", args)
+
+    def get_all_tasks(self, args):
+        return self._call("get_all_tasks", args)
+
+    def get_task_by_id(self, args):
+        return self._call("get_task_by_id", args)
+
+    def create_response(self, args):
+        return self._call("create_response", args)
+
+    def delete_response(self, args):
+        return self._call("delete_response", args)
+
+    def get_all_responses(self, args):
+        return self._call("get_all_responses", args)
+
+    def get_response_by_id(self, args):
+        return self._call("get_response_by_id", args)
+
+    def query_right_join(self, args):
+        return self._call("query_right_join", args)
+
+    def test_data(self, args):
+        return self._call("test_data", args)
+
+    def help(self, args):
+        return self._call("help", args)
+
+    def run(self):
+        while True:
+            try:
+                user_input = input("db_rpc_client> ").strip()
+                if not user_input:
+                    continue
+
+                parts = user_input.split()
+                cmd = parts[0].lower()
+                args = parts[1:]
+
+                if cmd == "exit":
+                    break
+
+                if cmd not in self.OPS:
+                    print("Такой команды нет!")
+                    continue
+                method = getattr(self, cmd)
+                print(method(args))
+
+            except Exception as e:
+                print(e)
+
+
 if __name__ == "__main__":
-    repl = Repl()
-    repl.run()
+    if len(sys.argv) > 1 and sys.argv[1] == "server":
+        print("Сервер поднят")
+        RPCServer(host="127.0.0.1", port=5007).start()
+    elif len(sys.argv) > 1 and sys.argv[1] == "client":
+        c = RPCClient(host="127.0.0.1", port=5007)
+        c.run()
+    else:
+        print("Usage: python file.py server|client")
