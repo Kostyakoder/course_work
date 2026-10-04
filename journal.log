@@ -1,0 +1,6 @@
+2026-10-04 16:33:53 - INFO - opcode=14 status=OK args=[''] result=Клиенты, задачи и ответы заполнены тестовыми данными
+2026-10-04 16:33:58 - INFO - opcode=3 status=OK args=[''] result=[{'id': 1, 'datetime': 1791120833, 'ip': '192.168.127.12', 'locale': 'Russia', 'platform': 'Mess'}, {'id': 2, 'datetime': 1791120833, 'ip': '192.168.111.00', 'locale': 'Tajikistan', 'platform': 'Mess'}, {'id': 3, 'datetime': 1791120833, 'ip': '192.168.100.01', 'locale': 'Armenia', 'platform': 'Mess'}]
+2026-10-04 16:34:07 - INFO - opcode=2 status=OK args=[[1]] result=Удален клиент с id: 1
+2026-10-04 16:34:15 - INFO - opcode=4 status=OK args=[[1]] result=Такого id у клиентов не существует!
+2026-10-04 16:34:24 - INFO - opcode=7 status=OK args=[''] result=[{'id': 1, 'datetime': 1791120833, 'payload': 'server', 'client': 1, 'tags': 'important', 'state': 'work'}, {'id': 2, 'datetime': 1791120833, 'payload': 'server', 'client': 2, 'tags': 'sensitive', 'state': 'success'}, {'id': 3, 'datetime': 1791120833, 'payload': 'server', 'client': 5, 'tags': 'disturb', 'state': 'unsuccess'}]
+2026-10-04 16:34:29 - INFO - opcode=6 status=OK args=[[1]] result=Удалена задача с id: 1

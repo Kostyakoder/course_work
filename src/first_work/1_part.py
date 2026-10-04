@@ -2,6 +2,10 @@ import sys
 import time
 import socket
 import xml.etree.ElementTree as ET
+import logging
+
+logger = logging.getLogger("rpc.journal")
+logger.setLevel(logging.INFO)
 
 
 class DataLayer:
@@ -439,6 +443,16 @@ class RPCServer(RPCBase):
     def __init__(self, host="127.0.0.1", port=5060):
         super().__init__(host, port)
         self.repl = Repl()
+
+        handler = logging.FileHandler("journal.log", encoding="utf-8")
+        handler.setFormatter(
+            logging.Formatter(
+                "%(asctime)s - %(levelname)s - %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S",
+            )
+        )
+        logger.addHandler(handler)
+
         self.ops = {
             1: self.repl.create_client_repl,
             2: self.repl.delete_client_repl,
@@ -487,7 +501,13 @@ class RPCServer(RPCBase):
                 status = "ERROR"
 
             print(f"[server] result={result} status={status}")
-            # logging.info(...)
+            logger.info(
+                "opcode=%s status=%s args=%s result=%s",
+                opcode,
+                status,
+                args,
+                result,
+            )
             self.send_response(conn, opcode, result)
         conn.close()
 
@@ -594,9 +614,9 @@ class RPCClient(RPCBase):
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "server":
         print("Сервер поднят")
-        RPCServer(host="127.0.0.1", port=5007).start()
+        RPCServer(host="127.0.0.1", port=5001).start()
     elif len(sys.argv) > 1 and sys.argv[1] == "client":
-        c = RPCClient(host="127.0.0.1", port=5007)
+        c = RPCClient(host="127.0.0.1", port=5001)
         c.run()
     else:
-        print("Usage: python file.py server|client")
+        print("Подними сервер (make server) или клиент (make client)")
