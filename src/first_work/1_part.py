@@ -1,7 +1,7 @@
 import sys
 import time
 import socket
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as et
 import logging
 
 logger = logging.getLogger("rpc.journal")
@@ -372,25 +372,25 @@ class RPCBase:
         self.port = port
 
     def serialize(self, obj, tag="data"):
-        root = ET.Element(tag)
+        root = et.Element(tag)
 
         def build(elem, obj):
             if isinstance(obj, dict):
                 for k, v in obj.items():
-                    child = ET.SubElement(elem, str(k))
+                    child = et.SubElement(elem, str(k))
                     build(child, v)
             elif isinstance(obj, list):
                 for item in obj:
-                    child = ET.SubElement(elem, "item")
+                    child = et.SubElement(elem, "item")
                     build(child, item)
             else:
                 elem.text = str(obj)
 
         build(root, obj)
-        return ET.tostring(root, encoding="unicode")
+        return et.tostring(root, encoding="unicode")
 
     def deserialize(self, xml_str):
-        root = ET.fromstring(xml_str)
+        root = et.fromstring(xml_str)
 
         def parse(elem):
             if len(elem) == 0:
@@ -475,7 +475,7 @@ class RPCServer(RPCBase):
         s = socket.socket()
         s.bind((self.host, self.port))
         s.listen(1)
-        print(f"RPC server on {self.host}:{self.port}")
+        print(f"RPC server on {self.host}: {self.port}")
         while True:
             conn, addr = s.accept()
             print(f"Client connected: {addr}")
@@ -513,7 +513,7 @@ class RPCServer(RPCBase):
 
 
 class RPCClient(RPCBase):
-    OPS = {
+    ops = {
         "create_client": 1,
         "delete_client": 2,
         "get_all_clients": 3,
@@ -537,7 +537,7 @@ class RPCClient(RPCBase):
         self.sock.connect((self.host, self.port))
 
     def _call(self, name, *args):
-        opcode = self.OPS[name]
+        opcode = self.ops[name]
         self.send_request(self.sock, opcode, list(args))
         _, result = self.recv_response(self.sock)
         return result
@@ -601,7 +601,7 @@ class RPCClient(RPCBase):
                 if cmd == "exit":
                     break
 
-                if cmd not in self.OPS:
+                if cmd not in self.ops:
                     print("Такой команды нет!")
                     continue
                 method = getattr(self, cmd)
