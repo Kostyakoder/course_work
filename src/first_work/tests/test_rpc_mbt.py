@@ -249,10 +249,15 @@ class RPCStateMachine(RuleBasedStateMachine):
 
     @rule()
     def query_right_join(self):
-        n = 2
         result = self.server.ops[13]([])
         assert isinstance(result, list)
-        assert len(result) == n
+        for item in result:
+            assert isinstance(item, dict)
+            assert set(item.keys()) == {"platform", "tags"}
+            if item["platform"] is not None:
+                assert isinstance(item["platform"], str)
+            assert isinstance(item["tags"], str)
+        assert len(result) == len(self.model.tasks)
 
     @rule()
     def test_data(self):

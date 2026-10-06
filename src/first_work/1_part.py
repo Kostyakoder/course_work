@@ -121,18 +121,17 @@ class DataLayer:
         filtered_tasks = [
             t for t in self.tasks if t["datetime"] > (curr_time - (8 * 60))
         ]
-        result = []
         result_clients = []
         for t in filtered_tasks:
+            empty = True
             for client in self.clients:
                 if client["id"] == t["client"]:
-                    result_clients.append(client)
+                    result_clients.append({'platform': client['platform'], 'tags': t['tags']})
+                    empty = False
+            if empty:
+                result_clients.append({'platform': None, 'tags': t['tags']})
 
-        result_tasks = [t for t in filtered_tasks]
-
-        result.append(result_clients)
-        result.append(result_tasks)
-        return result
+        return result_clients
 
 
 class Repl:
@@ -396,8 +395,8 @@ class RPCBase:
             if len(elem) == 0:
                 text = (elem.text or "").strip()
                 try:
-                    return int(text)
-                except ValueError:
+                    return eval(text)
+                except NameError:
                     return text
             if all(c.tag == "item" for c in elem):
                 return [parse(c) for c in elem]
@@ -614,9 +613,9 @@ class RPCClient(RPCBase):
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "server":
         print("Сервер поднят")
-        RPCServer(host="127.0.0.1", port=5001).start()
+        RPCServer(host="127.0.0.1", port=5002).start()
     elif len(sys.argv) > 1 and sys.argv[1] == "client":
-        c = RPCClient(host="127.0.0.1", port=5001)
+        c = RPCClient(host="127.0.0.1", port=5002)
         c.run()
     else:
         print("Подними сервер (make server) или клиент (make client)")
