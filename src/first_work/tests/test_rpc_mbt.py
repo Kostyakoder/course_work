@@ -249,9 +249,10 @@ class RPCStateMachine(RuleBasedStateMachine):
 
     @rule()
     def query_right_join(self):
+        n = 2
         result = self.server.ops[13]([])
         assert isinstance(result, list)
-        assert len(result) == 2
+        assert len(result) == n
 
     @rule()
     def test_data(self):
