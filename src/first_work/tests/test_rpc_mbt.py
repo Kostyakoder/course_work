@@ -11,7 +11,7 @@ from hypothesis import settings, Phase
 import importlib.util
 from pathlib import Path
 
-_mod_path = Path("/home/koder/kis_python_cource_work/src/first_work/1_part.py")
+_mod_path = Path("/home/koder/kis_python_cource_work/src/first_work/main.py")
 _spec = importlib.util.spec_from_file_location("rpc_module", _mod_path)
 mod = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(mod)
