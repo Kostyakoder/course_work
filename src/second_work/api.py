@@ -2,84 +2,38 @@ import sys
 import subprocess
 import json
 import os
+from db_sqlite import SQLiteDB
 import base64
 from flask import Flask, request, jsonify, abort
 from flask_httpauth import HTTPBasicAuth
+from werkzeug.exceptions import HTTPException
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_dir, "..", ".."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from src.first_work.main import DataLayer
 
 app = Flask(__name__)
 auth = HTTPBasicAuth()
-DB_FILE = "db.json"
+db = SQLiteDB("app.db")
 
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONVERTER_PATH = os.path.join(_BASE_DIR, "converter.py")
 
 
-class FileDB(DataLayer):
-    def __init__(self):
-        super().__init__()
-        self._load()
-
-    def _load(self):
-        if os.path.exists(DB_FILE):
-            with open(DB_FILE, "r", encoding="utf-8") as f:
-                state = json.load(f)
-                self.clients = state.get("clients", [])
-                self.tasks = state.get("tasks", [])
-                self.responses = state.get("responses", [])
-                self.client_id = state.get("client_id", 1)
-                self.task_id = state.get("task_id", 1)
-                self.response_id = state.get("response_id", 1)
-        else:
-            self._save()
-
-    def _save(self):
-        state = {
-            "clients": self.clients,
-            "tasks": self.tasks,
-            "responses": self.responses,
-            "client_id": self.client_id,
-            "task_id": self.task_id,
-            "response_id": self.response_id,
+@app.errorhandler(HTTPException)
+def handle_exception(e):
+    response = e.get_response()
+    response.data = json.dumps(
+        {
+            "code": e.code,
+            "name": e.name,
+            "description": e.description,
         }
-        with open(DB_FILE, "w", encoding="utf-8") as f:
-            json.dump(state, f, indent=2, ensure_ascii=False)
-
-    def create_client(self, ip, locale, platform):
-        res = super().create_client(ip, locale, platform)
-        self._save()
-        return res
-
-    def delete_client(self, n_client_id):
-        res = super().delete_client(n_client_id)
-        self._save()
-        return res
-
-    def create_task(self, payload, client, tags, state):
-        res = super().create_task(payload, client, tags, state)
-        self._save()
-        return res
-
-    def delete_task(self, n_task_id):
-        res = super().delete_task(n_task_id)
-        self._save()
-        return res
-
-    def create_response(self, output, state, failure,
-                        task, cache_hit, duration):
-        res = super().create_response(output, state, failure,
-                                      task, cache_hit, duration)
-        self._save()
-        return res
-
-
-db = FileDB()
+    )
+    response.content_type = "application/json"
+    return response
 
 
 @auth.verify_password
@@ -138,8 +92,12 @@ def create_task():
                     ("payload", "client", "tags", "state"))):
         abort(400, description="Missing required fields")
 
-    task = db.create_task(data["payload"], data["client"],
-                          data["tags"], data["state"])
+    task = db.create_task(
+        data["payload"],
+        data["client"],
+        data["tags"],
+        data["state"]
+    )
 
     if app.config.get("TESTING"):
         output = "Mocked HTML"
@@ -160,8 +118,7 @@ def create_task():
                 capture_output=True,
                 check=True,
             )
-            output = (process.stdout.
-                      decode("utf-8", errors="ignore"))  # 👈 decode!
+            output = process.stdout.decode("utf-8", errors="ignore")
             state = "success"
             failure = ""
 
@@ -241,7 +198,7 @@ def get_response_by_id():
 @app.route("/private/api/v3/browse/report", methods=["GET"])
 @auth.login_required
 def report():
-    return jsonify(db.query_right_join()), 200
+    return jsonify(db.query_report()), 200
 
 
 if __name__ == "__main__":
