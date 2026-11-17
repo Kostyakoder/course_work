@@ -25,7 +25,7 @@ class APIClient:
             f"{self.base_url}/private/api/v3/browse/client", auth=self.auth
         )
 
-    def get_client_by_id(self, id):  # Исправлено название
+    def get_client_by_id(self, id):
         return requests.get(
             f"{self.base_url}/private/api/v3/show/client",
             params={"id": id},

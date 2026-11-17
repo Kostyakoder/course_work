@@ -18,7 +18,6 @@ USER = "admin"
 PASS = "secret"
 
 
-# Запуск Flask в фоне для тестов
 def start_server():
     app.config["USERNAME"] = USER
     app.config["PASSWORD"] = PASS
@@ -97,13 +96,12 @@ class APIStateMachine(RuleBasedStateMachine):
 class TestStage2(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        # Очистка БД перед тестами
         if os.path.exists("db.json"):
             os.remove("db.json")
         cls.server_thread = threading.Thread(target=start_server)
         cls.server_thread.daemon = True
         cls.server_thread.start()
-        time.sleep(2)  # Ждем запуска сервера
+        time.sleep(2)
 
     def test_api_state_machine(self):
         run_state_machine_as_test(
