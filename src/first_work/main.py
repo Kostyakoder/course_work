@@ -126,7 +126,10 @@ class DataLayer:
             empty = True
             for client in self.clients:
                 if client["id"] == t["client"]:
-                    result_clients.append({'platform': client['platform'], 'tags': t['tags']})
+                    result_clients.append(
+                        {'platform': client['platform'],
+                         'tags': t['tags']}
+                    )
                     empty = False
             if empty:
                 result_clients.append({'platform': None, 'tags': t['tags']})
