@@ -46,7 +46,12 @@ class APIStateMachine(RuleBasedStateMachine):
         if not self.client_ids:
             return
         client_id = self.client_ids[-1]
-        resp = self.api.create_task("bW9ja19wYXlsb2Fk", client_id, "tag1", "new")
+        resp = self.api.create_task(
+            "bW9ja19wYXlsb2Fk",
+            client_id,
+            "tag1",
+            "new"
+        )
         code = 200
         assert resp.status_code == code
         data = resp.json()
