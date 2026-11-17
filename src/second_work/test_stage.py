@@ -36,7 +36,8 @@ class APIStateMachine(RuleBasedStateMachine):
     @rule()
     def create_client(self):
         resp = self.api.create_client("127.0.0.1", "ru", "linux")
-        assert resp.status_code == 200
+        code = 200
+        assert resp.status_code == code
         data = resp.json()
         assert "id" in data
         self.client_ids.append(data["id"])
@@ -50,7 +51,8 @@ class APIStateMachine(RuleBasedStateMachine):
                                     client_id,
                                     "tag1",
                                     "new")
-        assert resp.status_code == 200
+        code = 200
+        assert resp.status_code == code
         data = resp.json()
         assert "id" in data
         self.task_ids.append(data["id"])
@@ -58,7 +60,8 @@ class APIStateMachine(RuleBasedStateMachine):
     @rule()
     def get_clients(self):
         resp = self.api.get_all_clients()
-        assert resp.status_code == 200
+        code = 200
+        assert resp.status_code == code
         assert isinstance(resp.json(), list)
 
     @rule()
@@ -67,13 +70,15 @@ class APIStateMachine(RuleBasedStateMachine):
             return
         client_id = self.client_ids[-1]
         resp = self.api.get_all_tasks(client_id)
-        assert resp.status_code == 200
+        code = 200
+        assert resp.status_code == code
         assert isinstance(resp.json(), list)
 
     @rule()
     def get_report(self):
         resp = self.api.report()
-        assert resp.status_code == 200
+        code = 200
+        assert resp.status_code == code
         assert isinstance(resp.json(), list)
 
     @rule()
@@ -82,7 +87,8 @@ class APIStateMachine(RuleBasedStateMachine):
             return
         tid = self.task_ids.pop()
         resp = self.api.delete_task(tid)
-        assert resp.status_code == 200
+        code = 200
+        assert resp.status_code == code
 
     @rule()
     def delete_client(self):
@@ -90,7 +96,8 @@ class APIStateMachine(RuleBasedStateMachine):
             return
         cid = self.client_ids.pop()
         resp = self.api.delete_client(cid)
-        assert resp.status_code == 200
+        code = 200
+        assert resp.status_code == code
 
 
 class TestStage2(unittest.TestCase):
