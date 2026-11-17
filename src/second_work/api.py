@@ -38,10 +38,9 @@ def handle_exception(e):
 
 @auth.verify_password
 def verify_password(username, password):
-    return (username == app.config.get("USERNAME")
-            and password == app.config.get(
+    return username == app.config.get("USERNAME") and password == app.config.get(
         "PASSWORD"
-    ))
+    )
 
 
 @app.route("/private/api/v3/register/client", methods=["POST"])
@@ -87,17 +86,10 @@ def get_client_by_id():
 @auth.login_required
 def create_task():
     data = request.json
-    if (not data or
-            not all(k in data for k in
-                    ("payload", "client", "tags", "state"))):
+    if not data or not all(k in data for k in ("payload", "client", "tags", "state")):
         abort(400, description="Missing required fields")
 
-    task = db.create_task(
-        data["payload"],
-        data["client"],
-        data["tags"],
-        data["state"]
-    )
+    task = db.create_task(data["payload"], data["client"], data["tags"], data["state"])
 
     if app.config.get("TESTING"):
         output = "Mocked HTML"
@@ -105,13 +97,7 @@ def create_task():
         failure = ""
     else:
         try:
-            try:
-                docx_bytes = base64.b64decode(data["payload"], validate=True)
-            except Exception as e:
-                raise ValueError(
-                    f"payload must be base64-encoded DOCX. decode error: {e}"
-                )
-
+            docx_bytes = base64.b64decode(data["payload"], validate=True)
             process = subprocess.run(
                 [sys.executable, CONVERTER_PATH],
                 input=docx_bytes,
@@ -122,21 +108,10 @@ def create_task():
             state = "success"
             failure = ""
 
-            try:
-                os.makedirs("outputs", exist_ok=True)
-                with open(
-                    f"outputs/task_{task['id']}.html", "w", encoding="utf-8"
-                ) as f:
-                    f.write(output)
-            except Exception as e:
-                print(f"[api] failed to save html: {e}", file=sys.stderr)
+            os.makedirs("outputs", exist_ok=True)
+            with open(f"outputs/task_{task['id']}.html", "w", encoding="utf-8") as f:
+                f.write(output)
 
-        except subprocess.CalledProcessError as e:
-            output = (e.stdout or b"").decode("utf-8", errors="ignore")
-            failure = (e.stderr or b"").decode(
-                "utf-8", errors="ignore"
-            ) or f"exit={e.returncode}"
-            state = "failed"
         except Exception as e:
             output = ""
             state = "failed"
