@@ -3,7 +3,6 @@ from hypothesis import settings, HealthCheck
 from hypothesis.stateful import (
     RuleBasedStateMachine,
     rule,
-    initialize,
     run_state_machine_as_test,
 )
 from client import APIClient
@@ -13,7 +12,7 @@ import os
 from api import app
 
 PORT = 5004
-BASE_URL = f"http://127.0.0.1:{PORT}"
+BASE_URL = "http://127.0.0.1:" + str(PORT)
 USER = "admin"
 PASS = "secret"
 
@@ -47,10 +46,7 @@ class APIStateMachine(RuleBasedStateMachine):
         if not self.client_ids:
             return
         client_id = self.client_ids[-1]
-        resp = self.api.create_task("bW9ja19wYXlsb2Fk",
-                                    client_id,
-                                    "tag1",
-                                    "new")
+        resp = self.api.create_task("bW9ja19wYXlsb2Fk", client_id, "tag1", "new")
         code = 200
         assert resp.status_code == code
         data = resp.json()

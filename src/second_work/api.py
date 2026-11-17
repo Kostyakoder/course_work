@@ -20,6 +20,9 @@ db = SQLiteDB("app.db")
 
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONVERTER_PATH = os.path.join(_BASE_DIR, "converter.py")
+ARG_USERNAME = 1
+ARG_PASSWORD = 2
+ARG_TEST_MODE = 3
 
 
 @app.errorhandler(HTTPException)
@@ -177,9 +180,17 @@ def report():
 
 
 if __name__ == "__main__":
-    username = sys.argv[1] if len(sys.argv) > 1 else "admin"
-    password = sys.argv[2] if len(sys.argv) > 2 else "secret"
-    test_mode = len(sys.argv) > 3 and sys.argv[3] == "test"
+    if len(sys.argv) > ARG_USERNAME:
+        username = sys.argv[ARG_USERNAME]
+    else:
+        username = "admin"
+
+    if len(sys.argv) > ARG_PASSWORD:
+        password = sys.argv[ARG_PASSWORD]
+    else:
+        password = "secret"
+
+    test_mode = len(sys.argv) > ARG_TEST_MODE and sys.argv[ARG_TEST_MODE] == "test"
 
     app.config["USERNAME"] = username
     app.config["PASSWORD"] = password
