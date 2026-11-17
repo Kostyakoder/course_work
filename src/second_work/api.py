@@ -90,11 +90,6 @@ def get_client_by_id():
 @auth.login_required
 def create_task():
     data = request.json
-    if (not data or
-            not all(
-                k in data for k in ("payload", "client", "tags", "state")
-            )):
-        abort(400, description="Missing required fields")
 
     task = db.create_task(
         data["payload"],
@@ -207,4 +202,4 @@ if __name__ == "__main__":
     app.config["PASSWORD"] = password
     app.config["TESTING"] = test_mode
 
-    app.run(host="127.0.0.1", port=5003)
+    app.run(host="127.0.0.1", port=5006)
